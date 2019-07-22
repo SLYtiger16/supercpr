@@ -3,27 +3,29 @@ import { Text, View, ImageBackground, Image, TouchableOpacity, StyleSheet, Alert
 import background from "../assets/img/background.png";
 import logo from "../assets/img/noBackground200.png";
 import { connect } from "react-redux";
-// import Sound from "react-native-sound";
+import { store } from "../store/store";
+import { PlaySound } from "react-native-play-sound";
+import moment from "moment";
+import { NavigationEvents } from "react-navigation";
+import KeepAwake from "react-native-keep-awake";
 
 class Home extends React.Component {
   constructor(props) {
-    super();
+    super(props);
     this.state = {
-      currentTime: "00:00:00",
-      medTimer: "00:00",
-      medTimerShow: false,
-      shockTimer: "00:00",
-      shockTimerShow: false,
-      startTimer: "00:00:00",
-      startTimerShow: false
+      currentTime: "00:00:00"
     };
   }
   componentDidMount = () => {
-    this._getCurrentTime();
-    this.setState({
-      medTimer: "0" + this.props.app.medTimerSet + ":00",
-      shockTimer: "0" + this.props.app.shockTimerSet + ":00"
+    store.dispatch({
+      type: "UPDATE",
+      payload: {
+        medTimer: this.props.app.medTimerSet,
+        shockTimer: this.props.app.shockTimerSet
+      }
     });
+    this._getCurrentTime();
+    store.dispatch({ type: "SET_SOUNDS" });
     this.clock = setInterval(this._getCurrentTime, 1000);
   };
   componentWillUnmount = () => {
@@ -31,26 +33,25 @@ class Home extends React.Component {
     clearInterval(this.medTimer);
     clearInterval(this.shockTimer);
   };
-  // _playSound = () => {
-  //   Sound.setCategory("Playback");
-  //   const beep = new Sound("../assets/sounds/beep522.wav", Sound.MAIN_BUNDLE, error => {
-  //     if (error) {
-  //       return console.log("Error ", error);
-  //     }
-  //     console.log("duration: " + beep.getDuration() + " channels: " + beep.getNumberOfChannels());
-  //     beep.play(success => {
-  //       if (success) {
-  //         return console.log("played");
-  //       } else {
-  //         return console.log("Not Played");
-  //       }
-  //     });
-  //   });
-  // };
+  _playSound = () => {
+    if (this.props.app.isPlaying === true) {
+      this.props.app.sounds.Beep.stop();
+      this.props.app.sounds.Click.stop();
+      this.props.app.sounds.Floop.stop();
+      this.props.app.sounds.Laser.stop();
+      this.props.app.sounds.Metal.stop();
+      this.props.app.sounds.Pew.stop();
+      this.props.app.sounds.Zap.stop();
+    } else {
+      this.props.app.sounds[this.props.app.soundSelected].run();
+    }
+    store.dispatch({ type: "TOGGLE_ISPLAYING" });
+  };
   _onPressStart = () => {
-    // this._playSound();
     Vibration.vibrate(500);
-    if (!this.state.startTimerShow) {
+    if (!this.props.app.startTimerShow) {
+      store.dispatch({ type: "UPDATE_LOG", payload: moment().format("YYYY-MM-DD HH:mm:ss") + " - CPR Metronome Started" });
+      this._playSound();
       this._startTimerMethod();
       this.startTimer = setInterval(this._startTimerMethod, 1000);
     } else {
@@ -62,7 +63,7 @@ class Home extends React.Component {
           {
             text: "I'm Sure",
             onPress: () => {
-              if (this.state.medTimerShow || this.state.shockTimerShow) {
+              if (this.props.app.medTimerShow || this.props.app.shockTimerShow) {
                 Alert.alert(
                   "Other Timers Are Running...",
                   "Would you like to stop them too?",
@@ -70,33 +71,51 @@ class Home extends React.Component {
                     {
                       text: "NOPE",
                       onPress: () => {
-                        this.setState({ startTimerShow: false, startTimer: "00:00:00" });
+                        store.dispatch({ type: "UPDATE", payload: { startTimerShow: false, startTimer: "00:00:00" } });
                         clearInterval(this.startTimer);
+                        store.dispatch({
+                          type: "UPDATE_LOG",
+                          payload: moment().format("YYYY-MM-DD HH:mm:ss") + " - CPR Metronome Stopped"
+                        });
+                        this._playSound();
                       },
                       style: "cancel"
                     },
                     {
                       text: "YES PLEASE",
                       onPress: () => {
-                        this.setState({
-                          startTimerShow: false,
-                          startTimer: "00:00:00",
-                          medTimerShow: false,
-                          medTimer: "0" + this.props.app.medTimerSet + ":00",
-                          shockTimerShow: false,
-                          shockTimer: "0" + this.props.app.shockTimerSet + ":00"
+                        store.dispatch({
+                          type: "UPDATE",
+                          payload: {
+                            startTimerShow: false,
+                            startTimer: "00:00:00",
+                            medTimerShow: false,
+                            medTimer: this.props.app.medTimerSet,
+                            shockTimerShow: false,
+                            shockTimer: this.props.app.shockTimerSet
+                          }
                         });
                         clearInterval(this.startTimer);
                         clearInterval(this.medTimer);
                         clearInterval(this.shockTimer);
+                        store.dispatch({
+                          type: "UPDATE_LOG",
+                          payload: moment().format("YYYY-MM-DD HH:mm:ss") + " - CPR Metronome Stopped"
+                        });
+                        this._playSound();
                       }
                     }
                   ],
                   { cancelable: false }
                 );
               } else {
-                this.setState({ startTimerShow: false, startTimer: "00:00:00" });
+                store.dispatch({ type: "UPDATE", payload: { startTimerShow: false, startTimer: "00:00:00" } });
                 clearInterval(this.startTimer);
+                store.dispatch({
+                  type: "UPDATE_LOG",
+                  payload: moment().format("YYYY-MM-DD HH:mm:ss") + " - CPR Metronome Stopped"
+                });
+                this._playSound();
               }
             }
           }
@@ -107,7 +126,8 @@ class Home extends React.Component {
   };
   _onPressMed = () => {
     Vibration.vibrate(500);
-    if (!this.state.medTimerShow) {
+    if (!this.props.app.medTimerShow) {
+      store.dispatch({ type: "UPDATE_LOG", payload: moment().format("YYYY-MM-DD HH:mm:ss") + " - Med Timer Started" });
       this._medTimerMethod();
       this.medTimer = setInterval(this._medTimerMethod, 1000);
     } else {
@@ -119,7 +139,11 @@ class Home extends React.Component {
           {
             text: "I'm Sure",
             onPress: () => {
-              this.setState({ medTimerShow: false, medTimer: "0" + this.props.app.medTimerSet + ":00" });
+              store.dispatch({
+                type: "UPDATE",
+                payload: { medTimerShow: false, medTimer: this.props.app.medTimerSet }
+              });
+              store.dispatch({ type: "UPDATE_LOG", payload: moment().format("YYYY-MM-DD HH:mm:ss") + " - Med Timer Stopped" });
               clearInterval(this.medTimer);
             }
           }
@@ -130,7 +154,8 @@ class Home extends React.Component {
   };
   _onPressShock = () => {
     Vibration.vibrate(500);
-    if (!this.state.shockTimerShow) {
+    if (!this.props.app.shockTimerShow) {
+      store.dispatch({ type: "UPDATE_LOG", payload: moment().format("YYYY-MM-DD HH:mm:ss") + " - Shock Timer Started" });
       this._shockTimerMethod();
       this.shockTimer = setInterval(this._shockTimerMethod, 1000);
     } else {
@@ -142,7 +167,14 @@ class Home extends React.Component {
           {
             text: "I'm Sure",
             onPress: () => {
-              this.setState({ shockTimerShow: false, shockTimer: "0" + this.props.app.shockTimerSet + ":00" });
+              store.dispatch({
+                type: "UPDATE",
+                payload: { shockTimerShow: false, shockTimer: this.props.app.shockTimerSet }
+              });
+              store.dispatch({
+                type: "UPDATE_LOG",
+                payload: moment().format("YYYY-MM-DD HH:mm:ss") + " - Shock Timer Stopped"
+              });
               clearInterval(this.shockTimer);
             }
           }
@@ -152,7 +184,7 @@ class Home extends React.Component {
     }
   };
   _startTimerMethod = () => {
-    let current = this.state.startTimer.split(":");
+    let current = this.props.app.startTimer.split(":");
     let hours = Number(current[0]);
     let minutes = Number(current[1]);
     let seconds = Number(current[2]) + 1;
@@ -173,10 +205,10 @@ class Home extends React.Component {
     if (seconds < 10) {
       seconds = "0" + seconds;
     }
-    this.setState({ startTimerShow: true, startTimer: hours + ":" + minutes + ":" + seconds });
+    store.dispatch({ type: "UPDATE", payload: { startTimerShow: true, startTimer: hours + ":" + minutes + ":" + seconds } });
   };
   _medTimerMethod = () => {
-    let current = this.state.medTimer.split(":");
+    let current = this.props.app.medTimer.split(":");
     let minutes = Number(current[0]);
     let seconds = Number(current[1]) - 1;
     if (seconds === 0 && minutes === 0) {
@@ -191,10 +223,10 @@ class Home extends React.Component {
     if (seconds < 10) {
       seconds = "0" + seconds;
     }
-    this.setState({ medTimerShow: true, medTimer: minutes + ":" + seconds });
+    store.dispatch({ type: "UPDATE", payload: { medTimerShow: true, medTimer: minutes + ":" + seconds } });
   };
   _shockTimerMethod = () => {
-    let current = this.state.shockTimer.split(":");
+    let current = this.props.app.shockTimer.split(":");
     let minutes = Number(current[0]);
     let seconds = Number(current[1]) - 1;
     if (seconds === 0 && minutes === 0) {
@@ -209,13 +241,30 @@ class Home extends React.Component {
     if (seconds < 10) {
       seconds = "0" + seconds;
     }
-    this.setState({ shockTimerShow: true, shockTimer: minutes + ":" + seconds });
+    store.dispatch({ type: "UPDATE", payload: { shockTimerShow: true, shockTimer: minutes + ":" + seconds } });
   };
   _soundMedAlert = () => {
-    this._onPressMed();
+    this.props.app.sounds[this.props.app.soundSelected].stop();
+    PlaySound("alert");
+    setTimeout(() => {
+      if (this.props.app.isPlaying) this.props.app.sounds[this.props.app.soundSelected].run();
+    }, 2500);
+    store.dispatch({ type: "UPDATE", payload: { medTimerShow: false, medTimer: this.props.app.medTimerSet } });
+    store.dispatch({ type: "UPDATE_LOG", payload: moment().format("YYYY-MM-DD HH:mm:ss") + " - Med Timer Stopped" });
+    clearInterval(this.medTimer);
   };
   _soundShockAlert = () => {
-    this._onPressShock();
+    this.props.app.sounds[this.props.app.soundSelected].stop();
+    PlaySound("alert");
+    setTimeout(() => {
+      if (this.props.app.isPlaying) this.props.app.sounds[this.props.app.soundSelected].run();
+    }, 2500);
+    store.dispatch({
+      type: "UPDATE",
+      payload: { shockTimerShow: false, shockTimer: this.props.app.shockTimerSet }
+    });
+    store.dispatch({ type: "UPDATE_LOG", payload: moment().format("YYYY-MM-DD HH:mm:ss") + " - Shock Timer Stopped" });
+    clearInterval(this.shockTimer);
   };
   _getCurrentTime = () => {
     let hour = new Date().getHours();
@@ -235,11 +284,36 @@ class Home extends React.Component {
   render = () => {
     return (
       <ImageBackground style={styles.bgImage} source={background}>
+        {(this.props.app.medTimerShow || this.props.app.shockTimerShow || this.props.app.startTimerShow) && <KeepAwake />}
+        <NavigationEvents
+          onWillFocus={() => {
+            if (this.props.app.renderUpdate) {
+              clearInterval(this.startTimer);
+              clearInterval(this.medTimer);
+              clearInterval(this.shockTimer);
+              this.setState(this.state);
+              store.dispatch({
+                type: "UPDATE",
+                payload: {
+                  medTimer: this.props.app.medTimerSet,
+                  medTimerShow: false,
+                  shockTimer: this.props.app.shockTimerSet,
+                  shockTimerShow: false,
+                  startTimer: "00:00:00",
+                  startTimerShow: false,
+                  renderUpdate: false
+                }
+              });
+            }
+          }}
+        />
         <View style={styles.container}>
           <View style={styles.infoBox}>
             <Text style={{ color: "yellow", fontSize: 35 }}>{this.state.currentTime}</Text>
-            {this.state.startTimerShow ? (
-              <Text style={{ fontWeight: "bold", color: "yellow", fontSize: 35 }}>{`CPR Time: ${this.state.startTimer}`}</Text>
+            {this.props.app.startTimerShow ? (
+              <Text style={{ fontWeight: "bold", color: "yellow", fontSize: 35 }}>{`CPR Time: ${
+                this.props.app.startTimer
+              }`}</Text>
             ) : (
               <Image source={logo} />
             )}
@@ -249,12 +323,12 @@ class Home extends React.Component {
               <TouchableOpacity
                 style={{
                   ...styles.leftMiddleButton,
-                  backgroundColor: this.state.medTimerShow ? "orange" : "rgba(0, 100, 255, 0.4)"
+                  backgroundColor: this.props.app.medTimerShow ? "orange" : "rgba(0, 100, 255, 0.4)"
                 }}
                 onPress={this._onPressMed}
               >
-                <Text style={{ fontWeight: "bold", color: this.state.medTimerShow ? "black" : "#efe06e", fontSize: 25 }}>
-                  {this.state.medTimerShow ? "MED: " + this.state.medTimer : "MED"}
+                <Text style={{ fontWeight: "bold", color: this.props.app.medTimerShow ? "black" : "#efe06e", fontSize: 25 }}>
+                  {this.props.app.medTimerShow ? "MED: " + this.props.app.medTimer : "MED"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -262,12 +336,12 @@ class Home extends React.Component {
               <TouchableOpacity
                 style={{
                   ...styles.rightMiddleButton,
-                  backgroundColor: this.state.shockTimerShow ? "orange" : "rgba(0, 100, 255, 0.4)"
+                  backgroundColor: this.props.app.shockTimerShow ? "orange" : "rgba(0, 100, 255, 0.4)"
                 }}
                 onPress={this._onPressShock}
               >
-                <Text style={{ fontWeight: "bold", color: this.state.shockTimerShow ? "black" : "#efe06e", fontSize: 25 }}>
-                  {this.state.shockTimerShow ? "SHOCK: " + this.state.shockTimer : "SHOCK"}
+                <Text style={{ fontWeight: "bold", color: this.props.app.shockTimerShow ? "black" : "#efe06e", fontSize: 25 }}>
+                  {this.props.app.shockTimerShow ? "SHOCK: " + this.props.app.shockTimer : "SHOCK"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -275,17 +349,14 @@ class Home extends React.Component {
           <TouchableOpacity
             style={{
               ...styles.startButton,
-              backgroundColor: this.state.startTimerShow ? "#f44336" : "rgba(0, 0, 255, 0.5)"
+              backgroundColor: this.props.app.startTimerShow ? "#f44336" : "rgba(0, 0, 255, 0.5)"
             }}
             onPress={this._onPressStart}
           >
             <Text style={{ fontWeight: "bold", color: "#efe06e", fontSize: 25 }}>
-              {this.state.startTimerShow ? "STOP" : "START"}
+              {this.props.app.startTimerShow ? "STOP" : "START"}
             </Text>
           </TouchableOpacity>
-        </View>
-        <View style={styles.footer}>
-          <Text style={{ color: "white" }}>610 Industries, LLC</Text>
         </View>
       </ImageBackground>
     );
@@ -354,16 +425,8 @@ const styles = StyleSheet.create({
   startButton: {
     width: "100%",
     height: "25%",
-    backgroundColor: "rgba(0, 0, 255, 0.5)",
+    backgroundColor: "rgba(0, 0, 255, 0.8)",
     borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  footer: {
-    width: "100%",
-    height: 60,
-    backgroundColor: "black",
-    alignSelf: "flex-end",
     alignItems: "center",
     justifyContent: "center"
   },

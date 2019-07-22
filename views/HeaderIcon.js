@@ -1,9 +1,15 @@
 import React from "react";
-import { TouchableOpacity } from "react-native";
+import { TouchableOpacity, Alert } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
+import { connect } from "react-redux";
 
 class HeaderIcon extends React.Component {
-  _onPressButton = () => this.props.navigationProps.toggleDrawer();
+  _onPressButton = () => {
+    if (this.props.app.medTimerShow || this.props.app.shockTimerShow || this.props.app.startTimerShow) {
+      return Alert.alert("Timers are running...", "All timers must be stopped to enter the menu!");
+    }
+    this.props.navigationProps.toggleDrawer();
+  };
   render = () => {
     return (
       <TouchableOpacity
@@ -17,4 +23,9 @@ class HeaderIcon extends React.Component {
   };
 }
 
-export default HeaderIcon;
+const mapStateToProps = state => {
+  const { app } = state;
+  return { app };
+};
+
+export default connect(mapStateToProps)(HeaderIcon);

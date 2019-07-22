@@ -6,11 +6,11 @@ import Log from "./views/Log";
 import Settings from "./views/Settings";
 import About from "./views/About";
 import { Provider } from "react-redux";
-import { createStore } from "redux";
-import appReducer from "./store/appReducer";
 import { createStackNavigator, createDrawerNavigator, createAppContainer } from "react-navigation";
-
-const store = createStore(appReducer);
+import { ActivityIndicator, View, Text, StyleSheet } from "react-native";
+import { store, persistor } from "./store/store";
+import { PersistGate } from "redux-persist/integration/react";
+import { AdMobBanner } from "react-native-admob";
 
 const navigationOptions = ({ navigation }) => ({
   headerTitle: "Super CPR",
@@ -59,12 +59,49 @@ const DrawerNavigator = createDrawerNavigator(
 
 const Navigation = createAppContainer(DrawerNavigator);
 
+class Loader extends React.Component {
+  render = () => (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: "transparent",
+        alignItems: "center",
+        justifyContent: "space-evenly",
+        padding: 10
+      }}
+    >
+      <ActivityIndicator size="large" />
+    </View>
+  );
+}
+
 class App extends React.Component {
   render = () => (
     <Provider store={store}>
-      <Navigation />
+      <PersistGate loading={<Loader />} persistor={persistor}>
+        <Navigation />
+        <AdMobBanner
+          adSize="fullBanner"
+          adUnitID="ca-app-pub-2503286195846087~1837763885"
+          onAdFailedToLoad={error => console.log(error)}
+        />
+        <View style={styles.footer}>
+          <Text style={{ color: "white" }}>610 Industries, LLC</Text>
+        </View>
+      </PersistGate>
     </Provider>
   );
 }
+
+const styles = StyleSheet.create({
+  footer: {
+    width: "100%",
+    height: 60,
+    backgroundColor: "black",
+    alignSelf: "flex-end",
+    alignItems: "center",
+    justifyContent: "center"
+  }
+});
 
 export default App;

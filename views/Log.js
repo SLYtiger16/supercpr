@@ -1,13 +1,50 @@
 import React from "react";
-import { Text, View, ImageBackground, StyleSheet, Alert, TouchableOpacity } from "react-native";
+import {
+  Text,
+  View,
+  ImageBackground,
+  StyleSheet,
+  Alert,
+  TouchableOpacity,
+  FlatList,
+  TouchableHighlight,
+  Share
+} from "react-native";
 import background from "../assets/img/background.png";
+import { connect } from "react-redux";
+import { store } from "../store/store";
 
 class Log extends React.Component {
-  _onPressShare = () => {
-    Alert.alert("Share");
+  _onPressShare = async () => {
+    let message = "";
+    this.props.app.log.forEach(e => {
+      message += e.item + "\n\r";
+    });
+    try {
+      await Share.share({
+        title: "Super CPR Log",
+        message: message
+      });
+    } catch (error) {
+      Alert.alert(error.message);
+    }
   };
   _onPressClear = () => {
-    Alert.alert("Clear");
+    Alert.alert(
+      "Clear log requested...",
+      "Are you sure you want to clear it permanently?",
+      [
+        { text: "Cancel", onPress: () => null, style: "cancel" },
+        {
+          text: "I'm Sure",
+          onPress: () => {
+            Alert.alert("Log has been cleared!");
+            store.dispatch({ type: "CLEAR_LOG" });
+          }
+        }
+      ],
+      { cancelable: false }
+    );
   };
   render = () => {
     return (
@@ -24,10 +61,23 @@ class Log extends React.Component {
               </TouchableOpacity>
             </View>
             <View style={{ width: "100%", height: 1, backgroundColor: "#e2e2e2", marginTop: 10 }} />
+            <FlatList
+              data={this.props.app.log}
+              renderItem={({ item, index, separators }) => (
+                <TouchableHighlight onShowUnderlay={separators.highlight} onHideUnderlay={separators.unhighlight} key={index}>
+                  <View style={{ marginTop: 10 }}>
+                    <Text
+                      style={{
+                        color: item.item.indexOf("CPR") > -1 ? "red" : item.item.indexOf("Med") > -1 ? "white" : "yellow"
+                      }}
+                    >
+                      {item.item}
+                    </Text>
+                  </View>
+                </TouchableHighlight>
+              )}
+            />
           </View>
-        </View>
-        <View style={styles.footer}>
-          <Text style={{ color: "white" }}>610 Industries, LLC</Text>
         </View>
       </ImageBackground>
     );
@@ -50,14 +100,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 100, 255, 0.4)",
     borderRadius: 20
   },
-  footer: {
-    width: "100%",
-    height: 60,
-    backgroundColor: "black",
-    alignSelf: "flex-end",
-    alignItems: "center",
-    justifyContent: "center"
-  },
   text: { color: "#efe06e", fontSize: 25 },
   buttonRow: {
     width: "100%",
@@ -76,4 +118,9 @@ const styles = StyleSheet.create({
   }
 });
 
-export default Log;
+const mapStateToProps = state => {
+  const { app } = state;
+  return { app };
+};
+
+export default connect(mapStateToProps)(Log);

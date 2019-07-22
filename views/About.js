@@ -18,9 +18,6 @@ class About extends React.Component {
             </Text>
           </View>
         </View>
-        <View style={styles.footer}>
-          <Text style={{ color: "white" }}>610 Industries, LLC</Text>
-        </View>
       </ImageBackground>
     );
   };
@@ -41,14 +38,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "space-evenly"
-  },
-  footer: {
-    width: "100%",
-    height: 60,
-    backgroundColor: "black",
-    alignSelf: "flex-end",
-    alignItems: "center",
-    justifyContent: "center"
   },
   title: { color: "#efe06e", fontSize: 25 },
   text: { color: "#efe06e", fontSize: 18, marginTop: 10 }

@@ -30,6 +30,12 @@ target 'supercpr' do
 
   pod 'RNGestureHandler', :path => '../node_modules/react-native-gesture-handler'
 
+  pod 'RNVectorIcons', :path => '../node_modules/react-native-vector-icons'
+
+
+  pod 'react-native-keep-awake', :path => '../node_modules/react-native-keep-awake'
+
+
   target 'supercprTests' do
     inherit! :search_paths
     # Pods for testing
